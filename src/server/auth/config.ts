@@ -1,8 +1,8 @@
-import { PrismaAdapter } from "@auth/prisma-adapter";
 import { type DefaultSession, type NextAuthConfig } from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
 import GoogleProvider from "next-auth/providers/google";
-import { db } from "~/server/db";
+import { type UserType } from "@prisma/client";
+import { CustomPrismaAdapter } from "~/server/auth/adapter";
 
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
@@ -14,15 +14,21 @@ declare module "next-auth" {
   interface Session extends DefaultSession {
     user: {
       id: string;
+      type: UserType;
       // ...other properties
-      // role: UserRole;
     } & DefaultSession["user"];
   }
 
-  // interface User {
-  //   // ...other properties
-  //   // role: UserRole;
-  // }
+  interface User {
+    type: UserType;
+    // ...other properties
+  }
+}
+
+declare module "next-auth/adapters" {
+  interface AdapterUser {
+    type: UserType;
+  }
 }
 
 /**
@@ -44,19 +50,23 @@ export const authConfig = {
      * ...add more providers here.
      */
   ],
-  adapter: PrismaAdapter(db),
+  adapter: CustomPrismaAdapter(), // Usar el adapter personalizado
   callbacks: {
-    session: ({ session, user }) => ({
-      ...session,
-      user: {
-        ...session.user,
-        id: user.id,
-      },
-    }),
+    session: ({ session, user }) => {
+      // Aquí user viene directamente de la base de datos con todos los campos
+      return {
+        ...session,
+        user: {
+          ...session.user,
+          id: user.id,
+          type: user.type,
+        },
+      };
+    },
     redirect: async ({ url, baseUrl }) => {
-      // Redirige al usuario a /editor/chatlist después de autenticarse
+      // Redirige al usuario a /editor/courses después de autenticarse
       if (url.startsWith(baseUrl)) {
-        return `${baseUrl}/editor/chatlist`;
+        return `${baseUrl}/editor/courses`;
       }
       return baseUrl;
     },

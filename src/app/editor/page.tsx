@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function EditorPage() {
-  redirect("/editor/course");
+  redirect("/editor/courses");
 }

@@ -9,7 +9,7 @@ const Sidebar = () => {
   const menuItems = [
     {
       label: "Cursos",
-      href: "/editor/course",
+      href: "/editor/courses",
       icon: BookOpen,
     },
     {

@@ -11,7 +11,7 @@ export default async function Home() {
 
   // Redirección del lado del servidor
   if (session?.user) {
-    redirect("/editor/chatlist");
+    redirect("/editor/courses");
   }
 
   return (
