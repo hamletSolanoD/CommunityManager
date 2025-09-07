@@ -166,7 +166,7 @@ const CreateCourseWizard = () => {
             asChild
             className="mb-4"
           >
-            <Link href="/admin/courses">
+            <Link href="/editor/courses">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Volver a Mis Cursos
             </Link>

@@ -684,6 +684,78 @@ export const coursesRouter = createTRPCRouter({
 
       return stats;
     }),
+  sendChatMessage: protectedProcedure
+    .input(
+      z.object({
+        courseId: z.string(),
+        message: z.string().min(1, "El mensaje no puede estar vacío"),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      // Verificar que el usuario está inscrito o es administrador
+      const enrollment = await ctx.db.userCourseEnrollment.findUnique({
+        where: {
+          userId_courseId: {
+            userId: userId,
+            courseId: input.courseId
+          }
+        }
+      });
+
+      const isAdmin = await ctx.db.course.findFirst({
+        where: {
+          id: input.courseId,
+          administrators: {
+            some: {
+              id: userId
+            }
+          }
+        }
+      });
+
+      if (!enrollment && !isAdmin) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "No tienes acceso al chat de este curso"
+        });
+      }
+
+      // Obtener el curso actual
+      const course = await ctx.db.course.findUnique({
+        where: { id: input.courseId }
+      });
+
+      if (!course) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Curso no encontrado"
+        });
+      }
+
+      // Agregar mensaje al chat
+      const chatConversation = course.chatConversation as any[] || [];
+      const newMessage = {
+        userId: userId,
+        userName: ctx.session.user.name || "Usuario",
+        message: input.message,
+        timestamp: new Date().toISOString(),
+      };
+
+      chatConversation.push(newMessage);
+
+      // Actualizar curso
+      const updatedCourse = await ctx.db.course.update({
+        where: { id: input.courseId },
+        data: {
+          chatConversation: chatConversation,
+          updatedAt: new Date(),
+        }
+      });
+
+      return newMessage;
+    }),
   getCourse: protectedProcedure
     .input(
       z.object({
@@ -763,5 +835,124 @@ export const coursesRouter = createTRPCRouter({
         isAdmin,
       };
     }),
+  updateCourse: protectedProcedure
+    .input(
+      z.object({
+        courseId: z.string(),
+        title: z.string().optional(),
+        description: z.string().nullable().optional(),
+        type: z.nativeEnum(CourseType).optional(),
+        location: z.string().nullable().optional(),
+        duration: z.number().nullable().optional(),
+        maxStudents: z.number().nullable().optional(),
+        status: z.nativeEnum(CourseStatus).optional(),
+        startDate: z.date().nullable().optional(),
+        endDate: z.date().nullable().optional(),
+        isPublic: z.boolean().optional(),
+        accessCode: z.string().nullable().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
 
+      // Verificar que es administrador del curso
+      const course = await ctx.db.course.findFirst({
+        where: {
+          id: input.courseId,
+          administrators: {
+            some: {
+              id: userId
+            }
+          }
+        }
+      });
+
+      if (!course) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "No tienes permisos para editar este curso"
+        });
+      }
+
+      const { courseId, ...updateData } = input;
+
+      const updatedCourse = await ctx.db.course.update({
+        where: { id: courseId },
+        data: {
+          ...updateData,
+          updatedAt: new Date(),
+        }
+      });
+
+      return updatedCourse;
+    }),
+
+
+  // Obtener participantes del curso con estadísticas
+  getCourseParticipants: protectedProcedure
+    .input(
+      z.object({
+        courseId: z.string(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      // Verificar acceso al curso
+      const enrollment = await ctx.db.userCourseEnrollment.findUnique({
+        where: {
+          userId_courseId: {
+            userId: userId,
+            courseId: input.courseId
+          }
+        }
+      });
+
+      const isAdmin = await ctx.db.course.findFirst({
+        where: {
+          id: input.courseId,
+          administrators: {
+            some: {
+              id: userId
+            }
+          }
+        }
+      });
+
+      if (!enrollment && !isAdmin) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "No tienes acceso a este curso"
+        });
+      }
+
+      const participants = await ctx.db.userCourseEnrollment.findMany({
+        where: {
+          courseId: input.courseId
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            }
+          }
+        }
+      });
+
+      const sessions = await ctx.db.courseSession.findMany({
+        where: {
+          courseId: input.courseId
+        },
+        include: {
+          participants: true
+        }
+      });
+
+      return {
+        participants,
+        sessions
+      };
+    }),
 });
