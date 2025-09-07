@@ -91,7 +91,7 @@ const MyCourses = () => {
                 </div>
 
                 <Link 
-                  href={`/courses/${curso.id}`}
+                  href={`courses/${curso.id}`}
                   className="w-full bg-blue-600 text-white text-center py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors block"
                 >
                   Continuar Curso

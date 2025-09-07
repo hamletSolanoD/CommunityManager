@@ -42,7 +42,7 @@ const MyAdministeredCourses = () => {
           <p className="text-gray-600 mt-1">Gestiona y supervisa tus cursos</p>
         </div>
         <Button asChild>
-          <Link href="/admin/courses/create">
+          <Link href="courses/create">
             <Plus className="h-4 w-4 mr-2" />
             Crear Curso
           </Link>
@@ -59,7 +59,7 @@ const MyAdministeredCourses = () => {
             Crea tu primer curso para comenzar a impartir conocimiento
           </p>
           <Button asChild>
-            <Link href="/admin/courses/create">
+            <Link href="courses/create">
               <Plus className="h-4 w-4 mr-2" />
               Crear Primer Curso
             </Link>
@@ -140,7 +140,7 @@ const MyAdministeredCourses = () => {
                       className="flex-1"
                       size="sm"
                     >
-                      <Link href={`/admin/courses/${curso.id}`}>
+                      <Link href={`courses/${curso.id}`}>
                         <Settings className="h-4 w-4 mr-1" />
                         Gestionar
                       </Link>
@@ -150,7 +150,7 @@ const MyAdministeredCourses = () => {
                       variant="outline"
                       size="sm"
                     >
-                      <Link href={`/admin/courses/${curso.id}/stats`}>
+                      <Link href={`courses/${curso.id}/stats`}>
                         <BarChart3 className="h-4 w-4" />
                       </Link>
                     </Button>

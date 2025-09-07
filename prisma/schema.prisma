@@ -13,6 +13,20 @@ enum UserType {
   COORDINADOR
 }
 
+enum CourseStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum CourseType {
+  VIRTUAL
+  PRESENCIAL
+  HIBRIDO
+}
+
+
 enum AtlasLabelType {
   ATLAS_SESION_COMPLETED_LABEL
   ATLAS_SESION_DRAFT_COMPLETED_LABEL
@@ -128,8 +142,8 @@ model AtlasEntry {
   labels      AtlasEntryLabel[]
   users       UserAtlasEntry[]
   
-  // Relación one-to-one con course session (solo para AtlasSesionLabel)
-  courseSession CourseSession?
+  // Relación one-to-many con course sessions (UNA entrada puede usarse en MÚLTIPLES sesiones)
+  courseSessions CourseSession[]
   
   // Referencias a otras entradas de atlas
   referencedEntries AtlasEntryReference[] @relation("SourceEntry")
@@ -137,13 +151,23 @@ model AtlasEntry {
 
   @@map("atlas_entries")
 }
-
 model Course {
   id          String   @id @default(cuid())
   title       String
   description String?
   isPublic    Boolean  @default(true)  // true = público, false = privado
   accessCode  String?  // código para cursos privados
+  
+  // Nuevos campos
+  type        CourseType @default(VIRTUAL)
+  location    String?    // Dirección para presenciales, plataforma para virtuales
+  thumbnail   String?    // URL de imagen del curso
+  duration    Int?       // Duración estimada en horas
+  maxStudents Int?       // Límite de estudiantes
+  status      CourseStatus @default(DRAFT)
+  startDate   DateTime?  // Fecha de inicio del curso
+  endDate     DateTime?  // Fecha de finalización del curso
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
@@ -163,8 +187,8 @@ model CourseSession {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   
-  // Relación one-to-one con atlas entry
-  atlasEntryId String      @unique
+  // Relación many-to-one con atlas entry (MÚLTIPLES sesiones pueden usar UNA entrada)
+  atlasEntryId String    
   atlasEntry   AtlasEntry  @relation(fields: [atlasEntryId], references: [id], onDelete: Cascade)
   
   // Relación con curso
