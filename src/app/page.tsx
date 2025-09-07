@@ -1,12 +1,10 @@
 // app/page.tsx
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LatestPost } from "~/app/editor/_components/post";
 import { auth } from "~/server/auth";
 import { api, HydrateClient } from "~/trpc/server";
 
 export default async function Home() {
-  const hello = await api.post.hello({ text: "from tRPC" });
   const session = await auth();
 
   // Redirección del lado del servidor
@@ -24,9 +22,7 @@ export default async function Home() {
           {/* ... resto de tu código ... */}
           
           <div className="flex flex-col items-center gap-2">
-            <p className="text-2xl text-white">
-              {hello ? hello.greeting : "Loading tRPC query..."}
-            </p>
+
 
             <div className="flex flex-col items-center justify-center gap-4">
               <Link

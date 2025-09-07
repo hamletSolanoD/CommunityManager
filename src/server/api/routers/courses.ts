@@ -1,11 +1,9 @@
-// server/api/routers/courses.ts
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { UserType, SessionStatus, ParticipantRole } from "@prisma/client";
 
 export const coursesRouter = createTRPCRouter({
-  // Crear curso (solo COORDINADOR o ADMINISTRADOR)
   create: protectedProcedure
     .input(
       z.object({
@@ -18,7 +16,6 @@ export const coursesRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const user = ctx.session.user;
       
-      // Verificar permisos
       if (user.type !== UserType.COORDINADOR && user.type !== UserType.ADMINISTRADOR) {
         throw new TRPCError({
           code: "FORBIDDEN", 
@@ -50,7 +47,6 @@ export const coursesRouter = createTRPCRouter({
       return course;
     }),
 
-  // Obtener cursos públicos
   getPublicCourses: protectedProcedure
     .query(async ({ ctx }) => {
       const courses = await ctx.db.course.findMany({
@@ -79,7 +75,6 @@ export const coursesRouter = createTRPCRouter({
       return courses;
     }),
 
-  // Obtener mis cursos
   getMyCourses: protectedProcedure
     .query(async ({ ctx }) => {
       const userId = ctx.session.user.id;
@@ -128,12 +123,11 @@ export const coursesRouter = createTRPCRouter({
         return {
           ...enrollment.course,
           completedSessions,
-          lastActivity: enrollment.createdAt, // Esto se puede mejorar con última actividad real
+          lastActivity: enrollment.createdAt,
         };
       });
     }),
 
-  // Obtener cursos que administro
   getMyAdministeredCourses: protectedProcedure
     .query(async ({ ctx }) => {
       const userId = ctx.session.user.id;
@@ -168,7 +162,6 @@ export const coursesRouter = createTRPCRouter({
       return courses;
     }),
 
-  // Inscribirse a curso público
   enrollPublic: protectedProcedure
     .input(
       z.object({
@@ -178,7 +171,6 @@ export const coursesRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
-      // Verificar que el curso existe y es público
       const course = await ctx.db.course.findUnique({
         where: { id: input.courseId }
       });
@@ -197,7 +189,6 @@ export const coursesRouter = createTRPCRouter({
         });
       }
 
-      // Verificar si ya está inscrito
       const existingEnrollment = await ctx.db.userCourseEnrollment.findUnique({
         where: {
           userId_courseId: {
@@ -214,7 +205,7 @@ export const coursesRouter = createTRPCRouter({
         });
       }
 
-      // Crear inscripción
+      
       const enrollment = await ctx.db.userCourseEnrollment.create({
         data: {
           userId: userId,
@@ -228,7 +219,6 @@ export const coursesRouter = createTRPCRouter({
       return enrollment;
     }),
 
-  // Inscribirse a curso privado con código
   enrollPrivate: protectedProcedure
     .input(
       z.object({
@@ -239,7 +229,6 @@ export const coursesRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
-      // Buscar curso por código
       const course = await ctx.db.course.findFirst({
         where: {
           accessCode: input.accessCode,
@@ -254,7 +243,6 @@ export const coursesRouter = createTRPCRouter({
         });
       }
 
-      // Verificar si ya está inscrito
       const existingEnrollment = await ctx.db.userCourseEnrollment.findUnique({
         where: {
           userId_courseId: {
@@ -271,7 +259,6 @@ export const coursesRouter = createTRPCRouter({
         });
       }
 
-      // Crear inscripción
       const enrollment = await ctx.db.userCourseEnrollment.create({
         data: {
           userId: userId,
@@ -285,7 +272,6 @@ export const coursesRouter = createTRPCRouter({
       return enrollment;
     }),
 
-  // Crear sesión de curso
   createSession: protectedProcedure
     .input(
       z.object({

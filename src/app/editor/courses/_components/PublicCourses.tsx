@@ -1,7 +1,6 @@
 "use client";
 import React, { useState } from "react";
-
-import { BookOpen, Lock, Users, Calendar, Key } from "lucide-react";
+import { BookOpen, Lock, Users, Calendar, Key, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -10,57 +9,71 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "~/components/ui/dialog";
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "~/components/ui/card";
+import { api } from "~/trpc/react";
+import { toast } from "sonner";
 
 const PublicCourses = () => {
   const [accessCode, setAccessCode] = useState("");
   const [selectedPrivateCourse, setSelectedPrivateCourse] = useState<string | null>(null);
+  const [isEnrolling, setIsEnrolling] = useState(false);
 
-  const cursosDisponibles = [
-    {
-      id: "1",
-      title: "Fundamentos de Machine Learning",
-      description: "Aprende los conceptos básicos de ML con ejemplos prácticos",
-      isPublic: true,
-      totalSessions: 10,
-      enrolledCount: 45,
-      createdAt: "2024-02-15",
-      administrators: ["Dr. García", "Prof. López"],
+  const { data: courses, isLoading, refetch } = api.courses.getPublicCourses.useQuery();
+  
+  const enrollPublicMutation = api.courses.enrollPublic.useMutation({
+    onSuccess: () => {
+      toast.success("¡Te has inscrito exitosamente al curso!");
+      refetch();
     },
-    {
-      id: "2",
-      title: "Desarrollo Avanzado con React",
-      description: "Patrones avanzados y mejores prácticas en React",
-      isPublic: true,
-      totalSessions: 8,
-      enrolledCount: 32,
-      createdAt: "2024-03-01",
-      administrators: ["Dev. Martínez"],
+    onError: (error) => {
+      toast.error(error.message);
     },
-    {
-      id: "3",
-      title: "Investigación en IA - Grupo Selecto",
-      description: "Proyecto de investigación para desarrollo de papers",
-      isPublic: false,
-      totalSessions: 15,
-      enrolledCount: 8,
-      createdAt: "2024-01-20",
-      administrators: ["Dr. Chen", "Dr. Rodríguez"],
+    onSettled: () => {
+      setIsEnrolling(false);
+    }
+  });
+
+  const enrollPrivateMutation = api.courses.enrollPrivate.useMutation({
+    onSuccess: () => {
+      toast.success("¡Te has inscrito exitosamente al curso!");
+      setAccessCode("");
+      setSelectedPrivateCourse(null);
+      refetch();
     },
-  ];
+    onError: (error) => {
+      toast.error(error.message);
+    },
+    onSettled: () => {
+      setIsEnrolling(false);
+    }
+  });
 
   const handleEnrollPublic = (courseId: string) => {
-    console.log("Inscribiéndose al curso público:", courseId);
+    setIsEnrolling(true);
+    enrollPublicMutation.mutate({ courseId });
   };
 
-  const handleEnrollPrivate = (courseId: string) => {
-    console.log("Inscribiéndose al curso privado:", courseId, "con código:", accessCode);
-    setAccessCode("");
-    setSelectedPrivateCourse(null);
+  const handleEnrollPrivate = (courseId?: string) => {
+    if (!accessCode.trim()) return;
+    
+    setIsEnrolling(true);
+    enrollPrivateMutation.mutate({ 
+      accessCode: accessCode.trim(),
+      ...(courseId && courseId !== "codigo-directo" ? { courseId } : {})
+    });
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <span className="ml-2 text-gray-600">Cargando cursos...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -78,19 +91,20 @@ const PublicCourses = () => {
               value={accessCode}
               onChange={(e) => setAccessCode(e.target.value)}
               className="flex-1"
+              disabled={isEnrolling}
             />
             <Button 
               onClick={() => handleEnrollPrivate("codigo-directo")}
-              disabled={!accessCode.trim()}
+              disabled={!accessCode.trim() || isEnrolling}
             >
-              Unirse
+              {isEnrolling ? <Loader2 className="h-4 w-4 animate-spin" /> : "Unirse"}
             </Button>
           </div>
         </CardContent>
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {cursosDisponibles.map((curso) => (
+        {courses?.map((curso) => (
           <Card key={curso.id} className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <div className="flex items-start justify-between">
@@ -112,11 +126,11 @@ const PublicCourses = () => {
                 <div className="space-y-2 text-sm text-gray-600">
                   <div className="flex items-center">
                     <BookOpen className="h-4 w-4 mr-2" />
-                    {curso.totalSessions} sesiones
+                    {curso._count.sessions} sesiones
                   </div>
                   <div className="flex items-center">
                     <Users className="h-4 w-4 mr-2" />
-                    {curso.enrolledCount} estudiantes
+                    {curso._count.enrollments} estudiantes
                   </div>
                   <div className="flex items-center">
                     <Calendar className="h-4 w-4 mr-2" />
@@ -129,7 +143,7 @@ const PublicCourses = () => {
                   <div className="flex flex-wrap gap-1">
                     {curso.administrators.map((admin, index) => (
                       <Badge key={index} variant="outline" className="text-xs">
-                        {admin}
+                        {admin.name || 'Sin nombre'}
                       </Badge>
                     ))}
                   </div>
@@ -139,7 +153,9 @@ const PublicCourses = () => {
                   <Button 
                     onClick={() => handleEnrollPublic(curso.id)}
                     className="w-full"
+                    disabled={isEnrolling}
                   >
+                    {isEnrolling ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Inscribirse
                   </Button>
                 ) : (
@@ -149,6 +165,7 @@ const PublicCourses = () => {
                         variant="outline" 
                         className="w-full"
                         onClick={() => setSelectedPrivateCourse(curso.id)}
+                        disabled={isEnrolling}
                       >
                         <Lock className="h-4 w-4 mr-2" />
                         Solicitar Acceso
@@ -168,14 +185,16 @@ const PublicCourses = () => {
                             placeholder="Ingresa el código proporcionado"
                             value={accessCode}
                             onChange={(e) => setAccessCode(e.target.value)}
+                            disabled={isEnrolling}
                           />
                         </div>
                         <div className="flex gap-3">
                           <Button 
-                            onClick={() => handleEnrollPrivate(curso.id)}
-                            disabled={!accessCode.trim()}
+                            onClick={() => handleEnrollPrivate(selectedPrivateCourse!)}
+                            disabled={!accessCode.trim() || isEnrolling}
                             className="flex-1"
                           >
+                            {isEnrolling ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                             Inscribirse
                           </Button>
                         </div>
@@ -189,7 +208,7 @@ const PublicCourses = () => {
         ))}
       </div>
 
-      {cursosDisponibles.length === 0 && (
+      {courses?.length === 0 && (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <BookOpen className="mx-auto h-12 w-12 text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
