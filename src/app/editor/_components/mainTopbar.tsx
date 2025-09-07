@@ -11,7 +11,6 @@ export default function mainTopbar({ user }: { user: User }) {
         <span className="text-gray-700">{user.name || user.email}</span>
         <button
           onClick={() => {
-            // Aquí puedes manejar el logout
             window.location.href = "/api/auth/signout";
           }}
           className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
